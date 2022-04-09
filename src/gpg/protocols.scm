@@ -36,24 +36,14 @@
   #:export (check-engine-version
 	    get-protocol-name
 	    get-engine-info
-	    set-engine-info
-	    toggle-debug))
-
-
-(define *debug* #t)
-(define (toggle-debug)
-  (set! *debug* (not *debug*)))
+	    set-engine-info))
 
 ;;;;;;;;;;;;;;;;;
 ;;; Libraries ;;;
 ;;;;;;;;;;;;;;;;;
 
-(define gpgme-lib (dynamic-link "libgpgme"))
-(define gpgme-helper-lib
-  (dynamic-link
-   (if *debug*
-       "/home/atomx/wd/gpgme-with-guile/src/lib/libguile-gpgme"
-       "libguile-gpgme")))
+(define gpgme-lib         (dynamic-link "libgpgme"))
+(define gpgme-helper-lib  (dynamic-link "libguile-gpgme"))
 
 ;;;;;;;;;;;;;
 ;;; Types ;;;
@@ -217,9 +207,6 @@ default value.
 
 Consider this alist immutable; there's no facility provided for the
 user to alter these values in the underlying GPGME library."
-  (if *debug*
-      (begin
-	(display "*** Translating engine info ***\n" (current-error-port))))
   (and (engine-info? st)
        (let ((lst (parse-c-struct
 		   (engine-info->pointer st)
@@ -234,12 +221,6 @@ user to alter these values in the underlying GPGME library."
 	 ;; NOTE: the struct value `next' is a _pointer to another
 	 ;; gpgme_engine_info_t struct_.  Therefore, we'll call this
 	 ;; function recursively until we hit a null pointer
-	 (if *debug*
-	     (begin
-	      (display "   Bustin' out an alist!\n" (current-error-port))
-	      (display "      The list is: " (current-error-port))
-	      (display lst (current-error-port))
-	      (newline (current-error-port))))
 	 (map (lambda (key val)
 		(cons key
 		 (case key
@@ -295,8 +276,6 @@ GPGME library.  Does the opposite of
 	      '*
 	      (dynamic-func "retrieve_engine_info" gpgme-helper-lib)
 	      (list '*))))
-    (if *debug*
-	(display "Attempting to get engine info\n" (current-error-port)))
     (lambda ()
       "\
 Create an association list containing the defaults for all protocol
@@ -353,18 +332,10 @@ different fashion by the function @code{set-engine-info}."
 			;; anyway if we don't have a valid engine object
 			(catch #t
 			  (lambda ()
-			    (if *debug*
-				(display "Trying to retrieve the engine info\n"
-					 (current-error-port)))
 			    (let ((callback (procedure->pointer
 					     '*
 					     error-code->error
 					     (list '*))))
-			      (if *debug*
-				  (begin
-				   (display "Created callback: " (current-error-port))
-				   (display callback (current-error-port))
-				   (newline (current-error-port))))
 			      (gei callback)))
 			  (lambda (key routine message . rest)
 			    (format (current-error-port)
@@ -377,8 +348,6 @@ different fashion by the function @code{set-engine-info}."
 			    (kont #f))))))
 	   ;; If we've gotten all the way out here, it's time to make
 	   ;; the association list
-	   (if *debug*
-	       (display "Got info, now translating.\n" (current-error-port)))
 	   (struct->engine-info-alist result)))))))
 
 (define set-engine-info
